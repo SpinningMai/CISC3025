@@ -9,7 +9,6 @@
 
 import argparse
 from collections import defaultdict
-import nltk
 from nltk.tokenize import word_tokenize
 from math import log, exp
 
@@ -28,21 +27,15 @@ def preprocess(inputfile, tokenized_file ='tokenized.txt'):
     except FileNotFoundError:
         print(f"ERROR：input file {inputfile} not found!")
     return
+
 def sentence_preprocess(sentence:str, word_dict):
-    #TODO: preprocess the sentence string input from command line, or the test set sentence
-    #   input: a string sentence, word dictionary
-    #   output: the tokenized sentence (a list, each item corresponds to a word or punctuation of the sentence)
-    #   Remember to lowercase all letters
-    #   Remember to mask the word that didn't appear in the training set as <UNK>
-    #   Remember to add the <s> and </s> tokens
     sentence = sentence.lower().strip()
     tokens = word_tokenize(sentence)
     sentence = [word if word in word_dict else "<UNK>" for word in tokens]
     sentence = ['<s>'] + sentence + ['</s>']
     return sentence
+
 def count_word(inputfile, outputfile = 'word.txt'):
-    #TODO: count the words from the corpus, and output the result to the output file in the format required.
-    #   A list object may help you with this work.
     try:
         preprocess(inputfile)
         with open('tokenized.txt', 'r', encoding='utf-8') as tokenized_file:
@@ -59,10 +52,8 @@ def count_word(inputfile, outputfile = 'word.txt'):
     except FileNotFoundError:
         print(f"ERROR：input file {tokenized_file} not found!")
     return
+
 def count_bigram(inputfile, outputfile = 'bigram.txt'):
-    # TODO: count the bigrams from the corpus, and output the result to the output file in the format required.
-    #   You can use a string to represent a bigram
-    #   A list object may help you with this work.
     try:
         preprocess(inputfile)
         with open('tokenized.txt', 'r', encoding='utf-8') as tokenized_file:
@@ -83,9 +74,9 @@ def count_bigram(inputfile, outputfile = 'bigram.txt'):
     except FileNotFoundError:
         print(f"ERROR：input file {tokenized_file} not found!")
     return
+
 def read_word_count(inputfile = 'word.txt'):
-    #TODO: implement a tool function to read the stored word count
-    #returns a dictionary, where word as the query and its frequency as the key. {'word0':1,'word1':2...}
+    # returns a dictionary, where word as the query and its frequency as the key. {'word0':1,'word1':2...}
     word_dict = defaultdict(int)
     with open(inputfile, 'r', encoding='utf-8') as corpus:
         for line in corpus:
@@ -93,9 +84,9 @@ def read_word_count(inputfile = 'word.txt'):
             count = int(count)
             word_dict[word] = count
     return word_dict
+
 def read_bigram_count(inputfile = 'bigram.txt'):
-    #TODO: implement a tool function to read the stored bigram count
-    #returns a dictionary, where bigram as the query and its frequency as the key. {'word0':1,'word1':2...}
+    # returns a dictionary, where bigram as the query and its frequency as the key. {'word0':1,'word1':2...}
     bigram_dict = defaultdict(int)
     with open(inputfile, 'r', encoding='utf-8') as corpus:
         for line in corpus:
@@ -104,11 +95,11 @@ def read_bigram_count(inputfile = 'bigram.txt'):
             bigram = f"{word0} {word1}"
             bigram_dict[bigram] = count
     return bigram_dict
+
 def add_one_perplexity(sentence, word_dict = None, bigram_dict = None):
-    #TODO: calculate the perplexity based on the add-1 smoothing
     return add_n_perplexity(sentence, 1, word_dict, bigram_dict)
+
 def add_n_perplexity(sentence, n, word_dict = None, bigram_dict = None):
-    #TODO: calculate the perplexity based on the add-n smoothing
     if word_dict is None:
         word_dict = read_word_count()
     if bigram_dict is None:
@@ -125,12 +116,8 @@ def add_n_perplexity(sentence, n, word_dict = None, bigram_dict = None):
         prev_word = word
     perplexity = exp(-log_prob / len(sentence))
     return perplexity
+
 def add_n_perplexity_batch(input, output, n):
-    #TODO:
-    #   Read the test-set from the input file, do the preprocessing using the sentence_preprocess function for each sentence
-    #   Calculate the perplexity of each sentence based on the add-n smoothing in batch mode
-    #   Calculate the average perplexity of the whole test-set
-    #   Output the experiment result in the format required
     word_dict = read_word_count()
     bigram_dict = read_bigram_count()
     cnt_sentence = 0.0
@@ -150,13 +137,14 @@ def add_n_perplexity_batch(input, output, n):
     avg_ppl = sum_ppl / cnt_sentence
     with open(output, 'r', encoding='utf-8') as output_file:
         lines = output_file.readlines()
-    if lines:  # 确保文件不为空
+    if lines:
         lines[0] = f"Test-Set-PPL: {avg_ppl:.2f}\n"
     with open(output, 'w', encoding='utf-8') as output_file:
         output_file.writelines(lines)
     return
+
 def main():
-    ''' Main Function '''
+    """ Main Function """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-pps', '--preprocess',type=str,nargs=2,help='preprocess the dataset')
@@ -196,16 +184,14 @@ def main():
         n = int(opt.add_n_perplexity_batch[2])
         add_n_perplexity_batch(input, output, n)
 
-
-
 if __name__ == '__main__':
     import os
     # main()
-    # count_word('my_test_train.txt')
-    # count_bigram('my_test_train.txt')
-    # add_n_perplexity_batch('my_test_test.txt', 'my_final_result.txt', 2)
-
-    # count_word('news.train')
-    # count_bigram('news.train')
-    n = 3
+    import time
+    start_time = time.time()
+    count_word('news.train')
+    count_bigram('news.train')
+    n = 2
     add_n_perplexity_batch('news.test', f'perplexity-{n}.txt', n)
+    end_time = time.time()
+    print("Total time: " + str(end_time - start_time))
