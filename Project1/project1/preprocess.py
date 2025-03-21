@@ -11,6 +11,7 @@ import re
 import json
 from nltk.tokenize import word_tokenize
 from nltk import PorterStemmer
+from tqdm import tqdm
 
 
 def read_files(dir, fileList):
@@ -21,7 +22,7 @@ def read_files(dir, fileList):
             corpus.append([item.strip('.txt'),f.read()])
     return corpus
 def preprocess_corpus(corpus):
-    for i in range(len(corpus)):
+    for i in tqdm(range(len(corpus))):
         #strip some symbol from the original text
         stripped_text = text_strip(corpus[i][1])
         #use the tokenize function to tokenize the text
@@ -32,11 +33,10 @@ def preprocess_corpus(corpus):
         corpus[i][1] = tokenized_text
     return corpus
 def text_strip(text):
-    #TODO:Complete the function to finish the following task:
-    #Use the regular expression to:
-    #   strip the blank and escape symbol from the original text
-    #   strip the '...more' at the end of each original text
-    #Convert letters to lowercase
+    #DONE:Complete the function to finish the following task:
+    text = re.sub(pattern=r'\.\.\.more$', repl='', string=text)
+    text = re.sub(pattern=r'[\s]+',repl=' ',string=text)
+    text = text.lower()
     return text
 def text_tokenize(text) -> list:
     #DONE: Use the NLTK package or regular expression and string operations to tokenize the text
@@ -56,7 +56,8 @@ def output_to_file(corpus,save_dir):
             f.close()
 def output_to_json(corpus,save_dir):
     with open(save_dir+'corpus.json','w', encoding='utf-8') as f:
-        #TODO: Use JSON package to dump the corpus to corpus.json file
+        #DONE: Use JSON package to dump the corpus to corpus.json file
+        f.write(json.dumps(corpus))
         f.close()
 def main():
     ''' Main Function '''

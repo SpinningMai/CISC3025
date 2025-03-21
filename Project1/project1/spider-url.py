@@ -60,7 +60,7 @@ def main():
     parser.add_argument('-u',
         '--base_url', default='http://books.toscrape.com/')
     #DONE: Crawl 10 pages of information about book and corresponding page URL.
-    out = parse_pages(1,10)
+    out = parse_pages(1,11)
     with codecs.open('url.json', 'w', encoding='utf-8') as fo:
         fo.write(json.dumps(out))
 

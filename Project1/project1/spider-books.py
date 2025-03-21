@@ -7,7 +7,7 @@
 # Created Date : Feb 21st 2021, 17:08:00
 # --------------------------------------------------
 
-import codecs       # solve encoding problem
+# import codecs
 import random
 import re
 import time
@@ -16,6 +16,7 @@ import json
 
 import requests
 from bs4 import BeautifulSoup, NavigableString
+from tqdm import tqdm
 
 
 def get_html(url):
@@ -27,6 +28,7 @@ def get_html(url):
     return html_file
 
 def idx_loop_contents(soup:BeautifulSoup, idx=None) -> NavigableString:
+    # it is ok to find the description from F12 in chrome without using codecs
     if idx is None:
         idx = [5, 5, 3, 1, 5, 3, 1, 7, 0]
     cursor = soup
@@ -57,7 +59,7 @@ def main():
         url_list = json.load(f)
         f.close()
     #acquire book description from the url
-    for item in url_list:
+    for item in tqdm(url_list):
         book_title = item[0]
         accessible_title = re.sub(r'[<>:"/\\|?*]', '-', book_title) # accessible in windows sys
         short_title = accessible_title[:50] # avoid long title
