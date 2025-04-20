@@ -16,10 +16,10 @@ def main():
 
     classifier = MEMM()
 
-    # classifier.max_iter = MAX_ITER
-    # classifier.train()
-    # classifier.dump_model()
-
+    classifier.max_iter = MAX_ITER
+    classifier.train()
+    classifier.dump_model()
+    print("success")
     try:
         classifier.load_model()
         classifier.beta = BETA

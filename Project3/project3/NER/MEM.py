@@ -17,8 +17,8 @@ import pickle
 
 class MEMM():
     def __init__(self):
-        self.train_path = "../data/train"
-        self.dev_path = "../data/dev"
+        self.train_path = "data/train"
+        self.dev_path = "data/dev"
         self.beta = 0
         self.max_iter = 0
         self.classifier = None
@@ -133,7 +133,7 @@ class MEMM():
             print(fmt % (word, pdist.prob('PERSON'), pdist.prob('O')))
 
     def dump_model(self):
-        with open('../model.pkl', 'wb') as f:
+        with open('model.pkl', 'wb') as f:
             pickle.dump(self.classifier, f)
 
     def load_model(self):
