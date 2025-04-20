@@ -191,7 +191,7 @@ def classify(probability, testset, outputfile):
     #DONE: Implement the naïve Bayes classifier to assign class labels to the documents in the test set.
     #   Output the result to the output file in the format required
     classes = ['crude', 'grain', 'money-fx', 'acq', 'earn']
-    classes_prob = np.zeros(5)  # 使用np.array代替[0.0]*5
+    classes_prob = np.zeros(5)
 
     prob = {}
     with open(probability, 'r', encoding='utf-8') as f:

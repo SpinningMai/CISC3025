@@ -13,15 +13,32 @@ from sklearn.metrics import (accuracy_score, fbeta_score, precision_score,
                              recall_score)
 import os
 import pickle
+import re
 
 
 class MEMM():
     def __init__(self):
-        self.train_path = "data/train"
-        self.dev_path = "data/dev"
+        self.train_path = "../data/train"
+        self.dev_path = "../data/dev"
         self.beta = 0
         self.max_iter = 0
         self.classifier = None
+
+        self.camel_regex = re.compile(r'^([A-Z]?[a-z]+)+([A-Z][a-z]+)*$')
+
+        self.latin_letters = {'é', 'ü'}
+        self.pinyin_regex = re.compile(
+            r"^("
+            r"(a[io]?|ou?|e[inr]?|ang?|ng|[bmp](a[io]?|[aei]ng?|ei|ie?|ia[no]|o|u)|"
+            r"pou|me|m[io]u|[fw](a|[ae]ng?|ei|o|u)|fou|wai|[dt](a[io]?|an|e|[aeio]ng|"
+            r"ie?|ia[no]|ou|u[ino]?|uan)|dei|diu|[nl](a[io]?|ei?|[eio]ng|i[eu]?|i?ang?|"
+            r"iao|in|ou|u[eo]?|ve?|uan)|nen|lia|lun|[ghk](a[io]?|[ae]ng?|e|ong|ou|u[aino]?|"
+            r"uai|uang?)|[gh]ei|[jqx](i(ao?|ang?|e|ng?|ong|u)?|u[en]?|uan)|([csz]h?|"
+            r"r)([ae]ng?|ao|e|i|ou|u[ino]?|uan)|[csz](ai?|ong)|[csz]h(ai?|uai|"
+            r"uang)|zei|[sz]hua|([cz]h|r)ong|y(ao?|[ai]ng?|e|i|ong|ou|u[en]?|uan))"
+            r"){1,4}$"
+        )
+        self.pinyin_confusion = {"me", "ma", "bin", "fan", "long", "sun", "panda", "china"}
 
     def features(self, words, previous_label, position):
         """
@@ -36,16 +53,38 @@ class MEMM():
         features = {}
         """ Baseline Features """
         current_word = words[position]
+
+        # Basic info
         features['has_(%s)' % current_word] = 1
         features['prev_label'] = previous_label
-        if current_word[0].isupper():
-            features['Titlecase'] = 1
 
-        #===== TODO: Add your features here =======#
+        # Letter cases
+        if current_word[0].isupper(): features['Titlecase'] = 1
+        if current_word.isupper(): features["Allcapital"] = 1
+        if self.camel_regex.fullmatch(current_word):features["Camelcase"] = 1
 
-        #...
+        # Punctuations
+        if "'" in current_word: features["Apostrophe"] = 1
+        if "-" in current_word: features["Hyphen"] = 1
 
-        #=============== TODO: Done ================#
+        # Suffix
+        if current_word.endswith("son"): features["Suffix_son"] = 1
+        if current_word.endswith("ez"): features["Suffix_ez"] = 1
+
+        # Prefix
+        if current_word.startswith("Mc"): features["Prefix_Mc"] = 1
+        if current_word.startswith("O'"): features["Prefix_OAp"] = 1
+
+        # Non-English
+        if any(current_word) in self.latin_letters:
+            features["Latinletter"] = 1
+        if self.pinyin_regex.fullmatch(current_word.lower()):
+            features["Pinyin"] = 1
+        if current_word.lower().endswith("lyu") or current_word.lower().startswith("lyu"):
+            features["Pinyin_lyu"] = 1
+        if current_word.lower() in self.pinyin_confusion:
+            features["Pinyin_confusion"] = 1
+
         return features
 
     def load_data(self, filename):
@@ -73,26 +112,6 @@ class MEMM():
     def test(self):
         print('Testing classifier...')
         words, labels = self.load_data(self.dev_path)
-        previous_labels = ["O"] + labels
-        features = [self.features(words, previous_labels[i], i)
-                    for i in range(len(words))]
-        results = [self.classifier.classify(n) for n in features]
-        '''list of str("O" or "PERSON")'''
-
-        f_score = fbeta_score(labels, results, average='macro', beta=self.beta)
-        precision = precision_score(labels, results, average='macro')
-        recall = recall_score(labels, results, average='macro')
-        accuracy = accuracy_score(labels, results)
-
-        print("%-15s %.4f\n%-15s %.4f\n%-15s %.4f\n%-15s %.4f\n" %
-              ("f_score=", f_score, "accuracy=", accuracy, "recall=", recall,
-               "precision=", precision))
-
-        return True
-
-    def test(self):
-        print('Testing classifier...')
-        words, labels = self.load_data(self.dev_path)
         prev_label = "O"
         results = []
         '''list of str("O" or "PERSON")'''
@@ -115,7 +134,8 @@ class MEMM():
         return True
 
     def show_samples(self, bound):
-        """Show some sample probability distributions.
+        """
+        Show some sample probability distributions.
         """
         words, labels = self.load_data(self.train_path)
         previous_labels = ["O"] + labels
@@ -133,7 +153,7 @@ class MEMM():
             print(fmt % (word, pdist.prob('PERSON'), pdist.prob('O')))
 
     def dump_model(self):
-        with open('model.pkl', 'wb') as f:
+        with open('../model.pkl', 'wb') as f:
             pickle.dump(self.classifier, f)
 
     def load_model(self):
@@ -143,11 +163,11 @@ class MEMM():
     def predict_sentence(self, sentence):
         words = sentence.strip().split()
         predictions = []
-        prev_label = "O"  # 初始前一个标签
+        prev_label = "O"
         for i, word in enumerate(words):
             single_bunch_features = self.features(words, prev_label, i)
-            pred = self.classifier.classify(single_bunch_features)  # 预测概率
-            label = "PERSON" if pred[0] > 0.5 else "O"  # 假设 0: PERSON, 1: O
+            pred = self.classifier.classify(single_bunch_features)
+            label = "PERSON" if pred[0] > 0.5 else "O"
             predictions.append((word, label))
-            prev_label = label  # 更新前一个标签
+            prev_label = label
         return predictions
