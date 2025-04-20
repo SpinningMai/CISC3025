@@ -18,12 +18,14 @@ import re
 
 class MEMM():
     def __init__(self):
-        self.train_path = "../data/train"
-        self.dev_path = "../data/dev"
+        self.train_path = "data/train"
+        self.dev_path = "data/dev"
         self.beta = 0
         self.max_iter = 0
         self.classifier = None
-
+        self.best_classifier = None 
+        self.best_f1 = 0  
+        self.no_improvement_count = 0 
         self.camel_regex = re.compile(r'^([A-Z]?[a-z]+)+([A-Z][a-z]+)*$')
 
         self.latin_letters = {'é', 'ü'}
@@ -103,11 +105,10 @@ class MEMM():
         words, labels = self.load_data(self.train_path)
         previous_labels = ["O"] + labels
         features = [self.features(words, previous_labels[i], i)
-                    for i in range(len(words))] # list of dict(str:Any)
+                    for i in range(len(words))]  # list of dict(str:Any)
         train_samples = [(f, l) for (f, l) in zip(features, labels)]
-        classifier = MaxentClassifier.train(
-            train_samples, max_iter=self.max_iter)
-        self.classifier = classifier
+        
+        self.classifier = MaxentClassifier.train(train_samples, max_iter=self.max_iter)
 
     def test(self):
         print('Testing classifier...')
@@ -131,7 +132,42 @@ class MEMM():
               ("f_score=", f_score, "accuracy=", accuracy, "recall=", recall,
                "precision=", precision))
 
+        # 如果当前F1分数更好，则更新最佳模型
+        if f_score > self.best_f1:
+            self.best_f1 = f_score
+            self.best_classifier = self.classifier
+            self.no_improvement_count = 0  # reset counter
+        else:
+            self.no_improvement_count += 1
+
+        # 如果连续三次F1下降，则停止训练
+        if self.no_improvement_count >= 3:
+            print("Stopping training as F1 score has not improved for 3 consecutive iterations.")
+            return False
+
         return True
+
+    def save_best_model(self):
+        if self.best_classifier:
+            with open('best_model.pkl', 'wb') as f:
+                pickle.dump(self.best_classifier, f)
+
+    def load_model(self):
+        with open('best_model.pkl', 'rb') as f:
+            self.classifier = pickle.load(f)
+
+    def predict_sentence(self, sentence):
+        words = sentence.strip().split()
+        predictions = []
+        prev_label = "O"
+        for i, word in enumerate(words):
+            single_bunch_features = self.features(words, prev_label, i)
+            pred = self.classifier.classify(single_bunch_features)
+            label = "PERSON" if pred[0] > 0.5 else "O"
+            predictions.append((word, label))
+            prev_label = label
+        return predictions
+
 
     def show_samples(self, bound):
         """
@@ -153,21 +189,7 @@ class MEMM():
             print(fmt % (word, pdist.prob('PERSON'), pdist.prob('O')))
 
     def dump_model(self):
-        with open('../model.pkl', 'wb') as f:
+        with open('model.pkl', 'wb') as f:
             pickle.dump(self.classifier, f)
 
-    def load_model(self):
-        with open('../model.pkl', 'rb') as f:
-            self.classifier = pickle.load(f)
-
-    def predict_sentence(self, sentence):
-        words = sentence.strip().split()
-        predictions = []
-        prev_label = "O"
-        for i, word in enumerate(words):
-            single_bunch_features = self.features(words, prev_label, i)
-            pred = self.classifier.classify(single_bunch_features)
-            label = "PERSON" if pred[0] > 0.5 else "O"
-            predictions.append((word, label))
-            prev_label = label
-        return predictions
+ 

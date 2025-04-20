@@ -13,51 +13,25 @@ from MEM import MEMM
 
 
 def main():
-
     classifier = MEMM()
 
     classifier.max_iter = MAX_ITER
-    classifier.train()
-    classifier.dump_model()
-    print("success")
-    try:
-        classifier.load_model()
-        classifier.beta = BETA
-        classifier.test()
-    except Exception as e:
-        print(e)
 
-    # if arg.train:
-    #     classifier.max_iter = MAX_ITER
-    #     classifier.train()
-    #     classifier.dump_model()
-    # if arg.dev:
-    #     try:
-    #         classifier.load_model()
-    #         classifier.beta = BETA
-    #         classifier.test()
-    #     except Exception as e:
-    #         print(e)
-    # if arg.show:
-    #     try:
-    #         classifier.load_model()
-    #         classifier.show_samples(BOUND)
-    #     except Exception as e:
-    #         print(e)
+    # 开始训练并逐步测试
+    for epoch in range(MAX_ITER):
+        classifier.train()
+        if not classifier.test():
+            break  # 如果停止训练，结束循环
+
+    # 保存最好的分类器
+    classifier.save_best_model()
+    print("Training finished and best model saved!")
 
 
 if __name__ == '__main__':
-
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-t', '--train', nargs='?', const=True, default=False)
-    # parser.add_argument('-d', '--dev', nargs='?', const=True, default=False)
-    # parser.add_argument('-s', '--show', nargs='?', const=True, default=False)
-    # arg = parser.parse_args()
-
     #====== Customization ======
     BETA = 0.5
-    MAX_ITER = 5
-    BOUND = (0, 20)
+    MAX_ITER = 50
     #==========================
 
     main()
