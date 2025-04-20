@@ -100,15 +100,17 @@ class MEMM():
             labels.append(doublet[1])
         return words, labels
 
-    def train(self):
-        print('Training classifier...')
+    def extract_samples(self):
         words, labels = self.load_data(self.train_path)
         previous_labels = ["O"] + labels
         features = [self.features(words, previous_labels[i], i)
                     for i in range(len(words))]  # list of dict(str:Any)
         train_samples = [(f, l) for (f, l) in zip(features, labels)]
-        
-        self.classifier = MaxentClassifier.train(train_samples, max_iter=self.max_iter)
+
+        return train_samples
+
+    def train(self, train_samples):
+        self.classifier = MaxentClassifier.train(train_samples, max_iter=1)
 
     def test(self):
         print('Testing classifier...')

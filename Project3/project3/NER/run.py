@@ -15,11 +15,12 @@ from MEM import MEMM
 def main():
     classifier = MEMM()
 
-    classifier.max_iter = MAX_ITER
+    classifier.max_iter = 1
 
+    train_samples = classifier.extract_samples()
     # 开始训练并逐步测试
     for epoch in range(MAX_ITER):
-        classifier.train()
+        classifier.train(train_samples)
         if not classifier.test():
             break  # 如果停止训练，结束循环
 
