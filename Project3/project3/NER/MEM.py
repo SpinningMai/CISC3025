@@ -18,10 +18,9 @@ import re
 
 class MEMM():
     def __init__(self):
-        self.train_path = "data/train"
-        self.dev_path = "data/dev"
+        self.train_path = "../data/train"
+        self.dev_path = "../data/dev"
         self.beta = 0
-        self.max_iter = 0
         self.classifier = None
         self.best_classifier = None 
         self.best_f1 = 0  
@@ -109,8 +108,8 @@ class MEMM():
 
         return train_samples
 
-    def train(self, train_samples):
-        self.classifier = MaxentClassifier.train(train_samples, max_iter=1)
+    def train(self, train_samples, max_iter:int):
+        self.classifier = MaxentClassifier.train(train_samples, max_iter=max_iter)
 
     def test(self):
         print('Testing classifier...')
@@ -143,7 +142,7 @@ class MEMM():
             self.no_improvement_count += 1
 
         # 如果连续三次F1下降，则停止训练
-        if self.no_improvement_count >= 3:
+        if self.no_improvement_count >= 8:
             print("Stopping training as F1 score has not improved for 3 consecutive iterations.")
             return False
 
@@ -151,11 +150,11 @@ class MEMM():
 
     def save_best_model(self):
         if self.best_classifier:
-            with open('best_model.pkl', 'wb') as f:
+            with open('../best_model.pkl', 'wb') as f:
                 pickle.dump(self.best_classifier, f)
 
     def load_model(self):
-        with open('best_model.pkl', 'rb') as f:
+        with open('../best_model.pkl', 'rb') as f:
             self.classifier = pickle.load(f)
 
     def predict_sentence(self, sentence):
@@ -191,7 +190,7 @@ class MEMM():
             print(fmt % (word, pdist.prob('PERSON'), pdist.prob('O')))
 
     def dump_model(self):
-        with open('model.pkl', 'wb') as f:
+        with open('../model.pkl', 'wb') as f:
             pickle.dump(self.classifier, f)
 
  
