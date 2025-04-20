@@ -141,7 +141,7 @@ class MEMM():
         else:
             self.no_improvement_count += 1
 
-        # 如果连续三次F1下降，则停止训练
+        # 如果连续8次F1下降，则停止训练
         if self.no_improvement_count >= 8:
             print("Stopping training as F1 score has not improved for 3 consecutive iterations.")
             return False
@@ -150,24 +150,24 @@ class MEMM():
 
     def save_best_model(self):
         if self.best_classifier:
-            with open('../best_model.pkl', 'wb') as f:
+            with open('../model.pkl', 'wb') as f:
                 pickle.dump(self.best_classifier, f)
 
     def load_model(self):
-        with open('../best_model.pkl', 'rb') as f:
+        with open('../model.pkl', 'rb') as f:
             self.classifier = pickle.load(f)
 
-    def predict_sentence(self, sentence):
-        words = sentence.strip().split()
-        predictions = []
-        prev_label = "O"
-        for i, word in enumerate(words):
-            single_bunch_features = self.features(words, prev_label, i)
-            pred = self.classifier.classify(single_bunch_features)
-            label = "PERSON" if pred[0] > 0.5 else "O"
-            predictions.append((word, label))
-            prev_label = label
-        return predictions
+    # def predict_sentence(self, sentence):
+    #     words = sentence.strip().split()
+    #     predictions = []
+    #     prev_label = "O"
+    #     for i, word in enumerate(words):
+    #         single_bunch_features = self.features(words, prev_label, i)
+    #         pred = self.classifier.classify(single_bunch_features)
+    #         label = "PERSON" if pred[0] > 0.5 else "O"
+    #         predictions.append((word, label))
+    #         prev_label = label
+    #     return predictions
 
 
     def show_samples(self, bound):

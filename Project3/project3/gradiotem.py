@@ -99,11 +99,17 @@ class MEMM:
         :param sentence: 输入的句子
         """
         words = word_tokenize(sentence)
-        previous_labels = ["O"] + ['O'] * (len(words) - 1)
-        features = [self.features(words, previous_labels[i], i) for i in range(len(words))]
+        predictions = []
+        previous_label = "O"
 
-        predictions = model.classify_many(features)
-        
+        for i in range(len(words)):
+            single_bunch_features = self.features(words, previous_label, i)
+
+            current_label = model.classify(single_bunch_features)
+            predictions.append(current_label)
+
+            previous_label = current_label
+
         return list(zip(words, predictions))
 
 # 初始化 MEMM 对象
@@ -115,7 +121,7 @@ def predict_ner(sentence):
     """
     result = ner_model.predict(sentence)
    
-    formatted_result = [f"{word}: {label}" for word, label in result]
+    formatted_result = [f"\"{word}\":\t{label}" for word, label in result]
     return "\n".join(formatted_result)
 
 # 定义 Gradio 界面
