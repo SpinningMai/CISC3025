@@ -7,6 +7,7 @@
 # Created Date : April 4th 2020, 17:45:05
 # Last Modified: April 4th 2020, 17:45:05
 # --------------------------------------------------
+import string
 
 from nltk.classify.maxent import MaxentClassifier
 from sklearn.metrics import (accuracy_score, fbeta_score, precision_score,
@@ -14,6 +15,8 @@ from sklearn.metrics import (accuracy_score, fbeta_score, precision_score,
 import os
 import pickle
 import re
+import unicodedata
+import hashlib
 
 
 class MEMM():
@@ -26,8 +29,8 @@ class MEMM():
         self.best_f1 = 0  
         self.no_improvement_count = 0 
         self.camel_regex = re.compile(r'^([A-Z]?[a-z]+)+([A-Z][a-z]+)*$')
+        self.titles = {"mr", "mrs", "ms", "dr", "prof", "rev", "sir", "madam", "miss"}
 
-        self.latin_letters = {'é', 'ü'}
         self.pinyin_regex = re.compile(
             r"^("
             r"(a[io]?|ou?|e[inr]?|ang?|ng|[bmp](a[io]?|[aei]ng?|ei|ie?|ia[no]|o|u)|"
@@ -41,6 +44,13 @@ class MEMM():
         )
         self.pinyin_confusion = {"me", "ma", "bin", "fan", "long", "sun", "panda", "china"}
 
+    @staticmethod
+    def is_latin_char(check_char):
+        try:
+            return unicodedata.name(check_char).startswith('LATIN')
+        except ValueError:
+            return False
+
     def features(self, words, previous_label, position):
         """
         Note: The previous label of current word is the only visible label.
@@ -53,11 +63,21 @@ class MEMM():
 
         features = {}
         """ Baseline Features """
+        # Roughly features of current word
         current_word = words[position]
 
-        # Basic info
         features['has_(%s)' % current_word] = 1
-        features['prev_label'] = previous_label
+        features['cur_word_len'] = len(current_word) // 2
+
+        # Roughly features of previous word
+        prev_word = words[position - 1] if position > 0 else "<START>"
+
+        features['prev_word_label'] = previous_label
+        features['prev_word_is_capitalized'] = prev_word[0].isupper()
+        features['prev_word_ends_with_punctuation'] = prev_word[-1] in string.punctuation
+        features['prev_word_is_title'] = any(prev_word.lower().startswith(t) for t in self.titles) # Mr, Miss, ...
+        features['prev_word_len'] = len(prev_word) // 2
+        features['prev_word_is_digit'] = prev_word.isdigit()
 
         # Letter cases
         if current_word[0].isupper(): features['Titlecase'] = 1
@@ -68,27 +88,32 @@ class MEMM():
         if "'" in current_word: features["Apostrophe"] = 1
         if "-" in current_word: features["Hyphen"] = 1
 
-        # Suffix
-        if current_word.endswith("son"): features["Suffix_son"] = 1
-        if current_word.endswith("ez"): features["Suffix_ez"] = 1
+        # Prefix & Suffix hashing
+        max_record_len = 3
 
-        # Prefix
-        if current_word.startswith("Mc"): features["Prefix_Mc"] = 1
-        if current_word.startswith("O'"): features["Prefix_OAp"] = 1
+        _prefix = current_word[:max_record_len]
+        _suffix = current_word[-max_record_len:]
+        features["prefix_hash"] = int(hashlib.md5(_prefix.encode()).hexdigest(), 16) % 10000
+        features["suffix_hash"] = int(hashlib.md5(_suffix.encode()).hexdigest(), 16) % 10000
 
         # Non-English
-        if any(current_word) in self.latin_letters:
-            features["Latinletter"] = 1
         if self.pinyin_regex.fullmatch(current_word.lower()):
             features["Pinyin"] = 1
         if current_word.lower().endswith("lyu") or current_word.lower().startswith("lyu"):
-            features["Pinyin_lyu"] = 1
+            features["Pinyin_lyu"] = 1 # specialize for 吕
         if current_word.lower() in self.pinyin_confusion:
             features["Pinyin_confusion"] = 1
+        if any(ord(c) > 127 and self.is_latin_char(c) for c in current_word):
+            features["Contain_non_ascii_latin"] = 1
+        if any(char.isdigit() for char in current_word):
+            features["Contain_any_number"] = 1
+        if not current_word.isalpha():
+            features["Contain_non_alpha"] = 1
 
         return features
 
-    def load_data(self, filename):
+    @staticmethod
+    def load_data(filename):
         words = []
         labels = []
         for line in open(filename, "r", encoding="utf-8"):
