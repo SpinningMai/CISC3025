@@ -16,7 +16,7 @@ with open('model.pkl', 'rb') as f:
 ner_model = MEMM()
 ner_model.classifier = model
 
-def f_beta_score(precision, recall, beta=2):
+def f_beta_score(precision, recall, beta=1.5):
     """计算 F-beta 分数（可以自定义 beta 参数）"""
     if precision + recall == 0:
         return 0
@@ -71,7 +71,7 @@ def train_model_and_visualize(beta, max_iter):
             right = mid2
 
     # 最终评估（可选：在剩余范围内微调）
-    classifier.classifier = best_classifier
+    classifier.best_classifier = best_classifier
     classifier.save_model(classifier.best_classifier)
 
     # 可视化训练过程

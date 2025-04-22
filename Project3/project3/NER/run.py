@@ -62,7 +62,7 @@ def main():
             right = mid2
 
     # Final evaluation (optional: fine-tune in the remaining range)
-    classifier.classifier = best_classifier
+    classifier.best_classifier = best_classifier
     classifier.save_model(classifier.best_classifier)
     print('Training finished and best model saved! best iteration is: ', best_iter, '\n')
 
