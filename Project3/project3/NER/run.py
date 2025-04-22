@@ -14,7 +14,7 @@ import copy
 from tqdm import tqdm
 from MEM import MEMM
 
-def f_beta_score(precision, recall, beta=2):
+def f_beta_score(precision, recall, beta=1.5):
     """beta > 1: recall has higher weight than precision"""
     if precision + recall == 0:
         return 0
@@ -25,7 +25,7 @@ def main():
     train_samples = classifier.extract_samples()
 
     left = 0
-    right = 50
+    right = 20
 
     best_score = -1
     best_iter = -1

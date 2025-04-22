@@ -13,7 +13,7 @@ nltk.download('punkt')
 with open('model.pkl', 'rb') as f:
     model = pickle.load(f)
 
-ner_model = MEMM()
+ner_model = MEMM("data/train", "data/dev", "model.pkl")
 ner_model.classifier = model
 
 def f_beta_score(precision, recall, beta=1.5):
@@ -23,7 +23,7 @@ def f_beta_score(precision, recall, beta=1.5):
     return (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
 
 def train_model_and_visualize(beta, max_iter):
-    classifier = MEMM()
+    classifier = MEMM("data/train", "data/dev", "model.pkl")
     train_samples = classifier.extract_samples()
 
     left = 0
@@ -103,8 +103,8 @@ def predict_ner(sentence):
 with gr.Blocks() as demo:
     with gr.Tab("训练与可视化"):
         # 添加 BETA 和 MAX_ITER 的滑块
-        beta_slider = gr.Slider(minimum=0.0, maximum=1.0, step=0.1, value=0.5, label="BETA")
-        max_iter_slider = gr.Slider(minimum=1, maximum=1000, step=10, value=500, label="MAX_ITER")
+        beta_slider = gr.Slider(minimum=0.0, maximum=3.0, step=0.1, value=1.5, label="BETA")
+        max_iter_slider = gr.Slider(minimum=1, maximum=50, step=1, value=25, label="MAX_ITER")
         
         # 训练按钮
         train_button = gr.Button("训练并可视化")

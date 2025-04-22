@@ -22,9 +22,11 @@ from nltk.corpus import stopwords
 from sklearn.metrics import (accuracy_score, fbeta_score, precision_score, recall_score)
 
 class MEMM:
-    def __init__(self):
-        self.train_path = "../data/train"
-        self.dev_path = "../data/dev"
+    def __init__(self, train_path = "../data/train", dev_path = "../data/dev", model_path = "../model.pkl"):
+        self.train_path = train_path
+        self.dev_path = dev_path
+        self.model_path = model_path
+
         self.beta = 0
         self.classifier = None
         self.best_classifier = None
@@ -67,10 +69,11 @@ class MEMM:
         """ Baseline Features """
         # Roughly features of current word
         current_word = words[position]
+        current_word_lower = current_word.lower()
 
         features['has_(%s)' % current_word] = 1
         features['cur_word_len'] = len(current_word)
-        if current_word.lower() in self.nltk_stopwords: features['cur_word_is_stopword'] = 1
+        if current_word_lower in self.nltk_stopwords: features['cur_word_is_stopword'] = 1
 
         # Roughly features of previous word
         prev_word = words[position - 1] if position > 0 else "<START>"
@@ -100,11 +103,11 @@ class MEMM:
         features["suffix_hash"] = int(hashlib.md5(_suffix.encode()).hexdigest(), 16) % 10000
 
         # Non-English
-        if self.pinyin_regex.fullmatch(current_word.lower()):
+        if self.pinyin_regex.fullmatch(current_word_lower):
             features["Pinyin"] = 1
-        if current_word.lower().endswith("lyu") or current_word.lower().startswith("lyu"):
+        if current_word_lower.endswith("lyu") or current_word_lower.startswith("lyu"):
             features["Pinyin_lyu"] = 1 # specialize for 吕
-        if current_word.lower() in self.pinyin_confusion:
+        if current_word_lower in self.pinyin_confusion:
             features["Pinyin_confusion"] = 1
 
         if any(ord(c) > 127 and self.is_latin_char(c) for c in current_word):
@@ -164,14 +167,13 @@ class MEMM:
 
         return {'f_score': f_score, 'accuracy': accuracy, 'precision': precision, 'recall': recall}
 
-    @staticmethod
-    def save_model(classifier_to_save):
+    def save_model(self, classifier_to_save):
         if classifier_to_save is None:
-            with open('../model.pkl', 'wb') as f:
+            with open(self.model_path, 'wb') as f:
                 pickle.dump(classifier_to_save, f)
 
     def load_model(self):
-        with open('../model.pkl', 'rb') as f:
+        with open(self.model_path, 'rb') as f:
             self.classifier = pickle.load(f)
 
     def predict_sentence(self, sentence):
@@ -212,9 +214,5 @@ class MEMM:
             else:
                 fmt = '  %-15s  %6.4f  *%6.4f'
             print(fmt % (word, pdist.prob('PERSON'), pdist.prob('O')))
-
-    def dump_model(self):
-        with open('../model.pkl', 'wb') as f:
-            pickle.dump(self.classifier, f)
 
  
