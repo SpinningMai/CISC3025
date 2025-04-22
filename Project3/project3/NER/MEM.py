@@ -10,6 +10,7 @@
 import copy
 import string
 
+from nltk import word_tokenize
 from nltk.classify.maxent import MaxentClassifier
 from sklearn.metrics import (accuracy_score, fbeta_score, precision_score, recall_score)
 import os
@@ -19,7 +20,7 @@ import unicodedata
 import hashlib
 
 
-class MEMM():
+class MEMM:
     def __init__(self):
         self.train_path = "../data/train"
         self.dev_path = "../data/dev"
@@ -67,7 +68,7 @@ class MEMM():
         current_word = words[position]
 
         features['has_(%s)' % current_word] = 1
-        features['cur_word_len'] = len(current_word) // 2
+        features['cur_word_len'] = len(current_word)
 
         # Roughly features of previous word
         prev_word = words[position - 1] if position > 0 else "<START>"
@@ -76,13 +77,12 @@ class MEMM():
         features['prev_word_is_capitalized'] = prev_word[0].isupper()
         features['prev_word_ends_with_punctuation'] = prev_word[-1] in string.punctuation
         features['prev_word_is_title'] = any(prev_word.lower().startswith(t) for t in self.titles) # Mr, Miss, ...
-        features['prev_word_len'] = len(prev_word) // 2
+        features['prev_word_len'] = len(prev_word)
         features['prev_word_is_digit'] = prev_word.isdigit()
 
         # Letter cases
         if current_word[0].isupper(): features['Titlecase'] = 1
         if current_word.isupper(): features["Allcapital"] = 1
-        if self.camel_regex.fullmatch(current_word):features["Camelcase"] = 1
 
         # Punctuations
         if "'" in current_word: features["Apostrophe"] = 1
@@ -191,17 +191,24 @@ class MEMM():
         with open('../model.pkl', 'rb') as f:
             self.classifier = pickle.load(f)
 
-    # def predict_sentence(self, sentence):
-    #     words = sentence.strip().split()
-    #     predictions = []
-    #     prev_label = "O"
-    #     for i, word in enumerate(words):
-    #         single_bunch_features = self.features(words, prev_label, i)
-    #         pred = self.classifier.classify(single_bunch_features)
-    #         label = "PERSON" if pred[0] > 0.5 else "O"
-    #         predictions.append((word, label))
-    #         prev_label = label
-    #     return predictions
+    def predict_sentence(self, sentence):
+        """
+        使用 MEMM 模型进行预测。
+        :param sentence: 输入的句子
+        """
+        words = word_tokenize(sentence)
+        predictions = []
+        previous_label = "O"
+
+        for i in range(len(words)):
+            single_bunch_features = self.features(words, previous_label, i)
+
+            current_label = self.classifier.classify(single_bunch_features)
+            predictions.append(current_label)
+
+            previous_label = current_label
+
+        return list(zip(words, predictions))
 
 
     def show_samples(self, bound):
