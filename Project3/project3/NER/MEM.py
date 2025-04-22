@@ -7,11 +7,11 @@
 # Created Date : April 4th 2020, 17:45:05
 # Last Modified: April 4th 2020, 17:45:05
 # --------------------------------------------------
+import copy
 import string
 
 from nltk.classify.maxent import MaxentClassifier
-from sklearn.metrics import (accuracy_score, fbeta_score, precision_score,
-                             recall_score)
+from sklearn.metrics import (accuracy_score, fbeta_score, precision_score, recall_score)
 import os
 import pickle
 import re
@@ -25,9 +25,9 @@ class MEMM():
         self.dev_path = "../data/dev"
         self.beta = 0
         self.classifier = None
-        self.best_classifier = None 
-        self.best_f1 = 0  
-        self.no_improvement_count = 0 
+        self.best_classifier = None
+        self.best_recall = 0
+        self.no_improvement_count = 0
         self.camel_regex = re.compile(r'^([A-Z]?[a-z]+)+([A-Z][a-z]+)*$')
         self.titles = {"mr", "mrs", "ms", "dr", "prof", "rev", "sir", "madam", "miss"}
 
@@ -103,12 +103,13 @@ class MEMM():
             features["Pinyin_lyu"] = 1 # specialize for 吕
         if current_word.lower() in self.pinyin_confusion:
             features["Pinyin_confusion"] = 1
+
         if any(ord(c) > 127 and self.is_latin_char(c) for c in current_word):
             features["Contain_non_ascii_latin"] = 1
         if any(char.isdigit() for char in current_word):
             features["Contain_any_number"] = 1
         if not current_word.isalpha():
-            features["Contain_non_alpha"] = 1
+            features["Contain_no_alpha"] = 1
 
         return features
 
@@ -154,19 +155,27 @@ class MEMM():
         recall = recall_score(labels, results, average='macro')
         accuracy = accuracy_score(labels, results)
 
-        print("%-15s %.4f\n%-15s %.4f\n%-15s %.4f\n%-15s %.4f\n" %
+        print("\n%-15s %.4f\n%-15s %.4f\n%-15s %.4f\n%-15s %.4f\n" %
               ("f_score=", f_score, "accuracy=", accuracy, "recall=", recall,
                "precision=", precision))
 
-        # 如果当前F1分数更好，则更新最佳模型
-        if f_score > self.best_f1:
-            self.best_f1 = f_score
-            self.best_classifier = self.classifier
+        # # 如果当前F1分数更好，则更新最佳模型
+        # if f_score > self.best_f1:
+        #     self.best_f1 = f_score
+        #     self.best_classifier = copy.deepcopy(self.classifier)
+        #     self.no_improvement_count = 0  # reset counter
+        # else:
+        #     self.no_improvement_count += 1
+
+        # 如果当前Recall分数更好，则更新最佳模型
+        if recall > self.best_recall:
+            self.best_recall = recall
+            self.best_classifier = copy.deepcopy(self.classifier)
             self.no_improvement_count = 0  # reset counter
         else:
             self.no_improvement_count += 1
 
-        # 如果连续8次F1下降，则停止训练
+        # 如果连续8次关注的指标下降，则停止训练
         if self.no_improvement_count >= 8:
             print("Stopping training as F1 score has not improved for 3 consecutive iterations.")
             return False

@@ -19,13 +19,17 @@ def main():
     classifier = MEMM()
 
     train_samples = classifier.extract_samples()
+
+    classifier.train(train_samples, 30)
+
     # 开始训练并逐步测试
-    for epoch in tqdm(range(MAX_ITER)):
-        classifier.train(train_samples, epoch + 2)
-        if not classifier.test():
-            break  # 如果停止训练，结束循环
+    # for epoch in tqdm(range(10, MAX_ITER)):
+    #     classifier.train(train_samples, epoch + 2)
+    #     if not classifier.test():
+    #         break  # 如果停止训练，结束循环
 
     # 保存最好的分类器
+    classifier.test()
     classifier.save_best_model()
     print("Training finished and best model saved!")
 
