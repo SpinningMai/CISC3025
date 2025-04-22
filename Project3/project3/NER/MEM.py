@@ -8,17 +8,18 @@
 # Last Modified: April 4th 2020, 17:45:05
 # --------------------------------------------------
 import copy
-import string
-
-from nltk import word_tokenize
-from nltk.classify.maxent import MaxentClassifier
-from sklearn.metrics import (accuracy_score, fbeta_score, precision_score, recall_score)
-import os
+import hashlib
 import pickle
 import re
-import unicodedata
-import hashlib
+import string
+import os
 
+import nltk
+import unicodedata
+from nltk import word_tokenize
+from nltk.classify.maxent import MaxentClassifier
+from nltk.corpus import stopwords
+from sklearn.metrics import (accuracy_score, fbeta_score, precision_score, recall_score)
 
 class MEMM:
     def __init__(self):
@@ -27,10 +28,10 @@ class MEMM:
         self.beta = 0
         self.classifier = None
         self.best_classifier = None
-        self.best_recall = 0
-        self.no_improvement_count = 0
-        self.camel_regex = re.compile(r'^([A-Z]?[a-z]+)+([A-Z][a-z]+)*$')
+        self.camel_regex = re.compile(r'^([a-z]+([A-Z]+[a-z]*)+)|([A-Z]+[a-z]*){2,}$')
         self.titles = {"mr", "mrs", "ms", "dr", "prof", "rev", "sir", "madam", "miss"}
+        nltk.download('stopwords')
+        self.nltk_stopwords = set(stopwords.words('english'))
 
         self.pinyin_regex = re.compile(
             r"^("
@@ -69,6 +70,7 @@ class MEMM:
 
         features['has_(%s)' % current_word] = 1
         features['cur_word_len'] = len(current_word)
+        if current_word.lower() in self.nltk_stopwords: features['cur_word_is_stopword'] = 1
 
         # Roughly features of previous word
         prev_word = words[position - 1] if position > 0 else "<START>"
@@ -83,6 +85,7 @@ class MEMM:
         # Letter cases
         if current_word[0].isupper(): features['Titlecase'] = 1
         if current_word.isupper(): features["Allcapital"] = 1
+        if self.camel_regex.fullmatch(current_word): features["Camelcase"] = 1
 
         # Punctuations
         if "'" in current_word: features["Apostrophe"] = 1
@@ -159,33 +162,13 @@ class MEMM:
               ("f_score=", f_score, "accuracy=", accuracy, "recall=", recall,
                "precision=", precision))
 
-        # # 如果当前F1分数更好，则更新最佳模型
-        # if f_score > self.best_f1:
-        #     self.best_f1 = f_score
-        #     self.best_classifier = copy.deepcopy(self.classifier)
-        #     self.no_improvement_count = 0  # reset counter
-        # else:
-        #     self.no_improvement_count += 1
+        return {'f_score': f_score, 'accuracy': accuracy, 'precision': precision, 'recall': recall}
 
-        # 如果当前Recall分数更好，则更新最佳模型
-        if recall > self.best_recall:
-            self.best_recall = recall
-            self.best_classifier = copy.deepcopy(self.classifier)
-            self.no_improvement_count = 0  # reset counter
-        else:
-            self.no_improvement_count += 1
-
-        # 如果连续8次关注的指标下降，则停止训练
-        if self.no_improvement_count >= 8:
-            print("Stopping training as F1 score has not improved for 3 consecutive iterations.")
-            return False
-
-        return True
-
-    def save_best_model(self):
-        if self.best_classifier:
+    @staticmethod
+    def save_model(classifier_to_save):
+        if classifier_to_save is None:
             with open('../model.pkl', 'wb') as f:
-                pickle.dump(self.best_classifier, f)
+                pickle.dump(classifier_to_save, f)
 
     def load_model(self):
         with open('../model.pkl', 'rb') as f:
