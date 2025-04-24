@@ -13,7 +13,7 @@ nltk.download('punkt')
 with open('model.pkl', 'rb') as f:
     model = pickle.load(f)
 
-ner_model = MEMM("data/train", "data/dev", "model.pkl")
+ner_model = MEMM("")
 ner_model.classifier = model
 
 def f_beta_score(precision, recall, beta=1.5):
@@ -23,7 +23,7 @@ def f_beta_score(precision, recall, beta=1.5):
     return (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
 
 def train_model_and_visualize(beta, max_iter):
-    classifier = MEMM("data/train", "data/dev", "model.pkl")
+    classifier = MEMM("")
     train_samples = classifier.extract_samples()
 
     left = 0

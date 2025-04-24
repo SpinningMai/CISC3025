@@ -22,10 +22,14 @@ from nltk.corpus import stopwords
 from sklearn.metrics import (accuracy_score, fbeta_score, precision_score, recall_score)
 
 class MEMM:
-    def __init__(self, train_path = "../data/train", dev_path = "../data/dev", model_path = "../model.pkl"):
-        self.train_path = train_path
-        self.dev_path = dev_path
-        self.model_path = model_path
+    def __init__(self, prev_path):
+        self.train_path = os.path.join(prev_path, "data/train")
+        self.dev_path = os.path.join(prev_path, "data/dev")
+        self.first_name_path = os.path.join(prev_path, "data/first_names.all.txt")
+        self.cn_last_name_path = os.path.join(prev_path, "data/cn_last_names.all.txt")
+        self.cn_first_name_path = os.path.join(prev_path, "data/cn_first_names.all.txt")
+        self.last_name_path = os.path.join(prev_path, "data/last_names.all.txt")
+        self.model_path = os.path.join(prev_path, "model.pkl")
 
         self.beta = 0
         self.classifier = None
@@ -34,6 +38,22 @@ class MEMM:
         self.titles = {"mr", "mrs", "ms", "dr", "prof", "rev", "sir", "madam", "miss"}
         nltk.download('stopwords')
         self.nltk_stopwords = set(stopwords.words('english'))
+
+        def load_gazetteer(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    return {word.strip() for word in f if word.strip()}
+            except FileNotFoundError:
+                print(f"Warning: File {file_path} not found, returning empty set")
+                return set()
+            except UnicodeDecodeError:
+                print(f"Error: Failed to decode {file_path} as UTF-8")
+                return set()
+
+        self.first_name_gazetteer = load_gazetteer(self.first_name_path)
+        self.last_name_gazetteer = load_gazetteer(self.last_name_path)
+        self.cn_first_name_gazetteer = load_gazetteer(self.cn_first_name_path)
+        self.cn_last_name_gazetteer = load_gazetteer(self.cn_last_name_path)
 
         self.pinyin_regex = re.compile(
             r"^("
@@ -55,6 +75,7 @@ class MEMM:
         except ValueError:
             return False
 
+
     def features(self, words, previous_label, position):
         """
         Note: The previous label of current word is the only visible label.
@@ -67,22 +88,30 @@ class MEMM:
 
         features = {}
         """ Baseline Features """
-        # Roughly features of current word
         current_word = words[position]
         current_word_lower = current_word.lower()
 
+        # Roughly features of current word
         features['has_(%s)' % current_word] = 1
-        features['cur_word_len'] = len(current_word)
+        features['cur_word_len'] = len(current_word) // 2
         if current_word_lower in self.nltk_stopwords: features['cur_word_is_stopword'] = 1
 
+        # Gazetteer Checking
+        features['cur_word_in_first_name_gazetteer'] = (current_word_lower in self.first_name_gazetteer)
+        features['cur_word_in_last_name_gazetteer'] = (current_word_lower in self.last_name_gazetteer)
+        features['cur_word_in_cn_first_name_gazetteer'] = (current_word_lower in self.cn_first_name_gazetteer)
+        features['cur_word_in_cn_last_name_gazetteer'] = (current_word_lower in self.cn_last_name_gazetteer)
+
         # Roughly features of previous word
-        prev_word = words[position - 1] if position > 0 else "<START>"
+        prev_word = words[position - 1] if position > 0 else "."
 
         features['prev_word_label'] = previous_label
         features['prev_word_is_capitalized'] = prev_word[0].isupper()
         features['prev_word_ends_with_punctuation'] = prev_word[-1] in string.punctuation
-        features['prev_word_is_title'] = any(prev_word.lower().startswith(t) for t in self.titles) # Mr, Miss, ...
-        features['prev_word_len'] = len(prev_word)
+        features['prev_word_is_title'] = any((prev_word.lower().startswith(t) and
+                                              len(prev_word.lower()) <= len(t) + 1)
+                                             for t in self.titles) # Mr, Mr., Miss., ...
+        features['prev_word_len'] = len(prev_word) // 2
         features['prev_word_is_digit'] = prev_word.isdigit()
 
         # Letter cases
@@ -95,12 +124,12 @@ class MEMM:
         if "-" in current_word: features["Hyphen"] = 1
 
         # Prefix & Suffix hashing
-        max_record_len = 3
+        max_record_len = 4
 
         _prefix = current_word[:max_record_len]
         _suffix = current_word[-max_record_len:]
-        features["prefix_hash"] = int(hashlib.md5(_prefix.encode()).hexdigest(), 16) % 10000
-        features["suffix_hash"] = int(hashlib.md5(_suffix.encode()).hexdigest(), 16) % 10000
+        features["prefix_hash"] = int(hashlib.md5(_prefix.encode()).hexdigest(), 16) % 100000
+        features["suffix_hash"] = int(hashlib.md5(_suffix.encode()).hexdigest(), 16) % 100000
 
         # Non-English
         if self.pinyin_regex.fullmatch(current_word_lower):
@@ -140,7 +169,7 @@ class MEMM:
 
         return train_samples
 
-    def train(self, train_samples, max_iter:int):
+    def train(self, train_samples, max_iter:int) -> None:
         self.classifier = MaxentClassifier.train(train_samples, max_iter=max_iter)
 
     def test(self):
@@ -168,7 +197,7 @@ class MEMM:
         return {'f_score': f_score, 'accuracy': accuracy, 'precision': precision, 'recall': recall}
 
     def save_model(self, classifier_to_save):
-        if classifier_to_save is None:
+        if classifier_to_save is not None:
             with open(self.model_path, 'wb') as f:
                 pickle.dump(classifier_to_save, f)
 

@@ -20,50 +20,57 @@ def f_beta_score(precision, recall, beta=1.5):
         return 0
     return (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
 
-def main():
-    classifier = MEMM()
-    train_samples = classifier.extract_samples()
+def get_iter_metrics(memm, train_samples, n_iter):
+    memm.train(train_samples, n_iter)
+    metrics = memm.test()
+    beta_f1 = f_beta_score(metrics['precision'], metrics['recall'])
+    return beta_f1, copy.deepcopy(memm.classifier)
 
-    left = 0
-    right = 20
+def ternary_search_best_classifier(memm, left, right) -> (int, MEMM):
+    memorized_iter: list[tuple[float, None]] = [(-1, None)] * (right + 1)
+
+    train_samples = memm.extract_samples()
 
     best_score = -1
     best_iter = -1
-    best_classifier = None
 
     while right - left >= 3:  # Terminate when the range is small enough
         mid1 = left + (right - left) // 3
         mid2 = right - (right - left) // 3
 
         # Train and evaluate mid1
-        classifier.train(train_samples, mid1 + 2)
-        metrics1 = classifier.test()
-        beta_f1 = f_beta_score(metrics1['precision'], metrics1['recall'])
+        if memorized_iter[mid1][0] == -1:
+            memorized_iter[mid1] = get_iter_metrics(memm, train_samples, mid1)
+        if memorized_iter[mid1][0] > best_score:
+            best_score = memorized_iter[mid1][0]
+            best_iter = mid1
 
-        # Train and evaluate mid2
-        classifier.train(train_samples, mid2 + 2)
-        metrics2 = classifier.test()
-        beta_f2 = f_beta_score(metrics2['precision'], metrics2['recall'])
-
-        # Update the best model
-        if beta_f1 > best_score:
-            best_score = beta_f1
-            best_iter = mid1 + 2
-            best_classifier = copy.deepcopy(classifier.classifier)
-        if beta_f2 > best_score:
-            best_score = beta_f2
-            best_iter = mid2 + 2
-            best_classifier = copy.deepcopy(classifier.classifier)
+        if memorized_iter[mid2][0] == -1:
+            memorized_iter[mid2] = get_iter_metrics(memm, train_samples, mid2)
+        if memorized_iter[mid2][0] > best_score:
+            best_score = memorized_iter[mid2][0]
+            best_iter = mid2
 
         # Narrow the search range
-        if beta_f1 < beta_f2:
+        if memorized_iter[mid1][0] < memorized_iter[mid2][0]:
             left = mid1
         else:
             right = mid2
 
     # Final evaluation (optional: fine-tune in the remaining range)
-    classifier.best_classifier = best_classifier
-    classifier.save_model(classifier.best_classifier)
+    return best_iter, memorized_iter[best_iter][1]
+
+def main():
+    memm = MEMM("../")
+
+    # Final evaluation (optional: fine-tune in the remaining range)
+    best_iter, memm.best_classifier = ternary_search_best_classifier(memm, left=20, right=60)
+
+    # best_iter = 24
+    # memm.train(memm.extract_samples(), best_iter)
+    # memm.best_classifier = memm.classifier
+
+    memm.save_model(memm.best_classifier)
     print('Training finished and best model saved! best iteration is: ', best_iter, '\n')
 
 
