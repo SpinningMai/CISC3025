@@ -64,13 +64,14 @@ def main():
     memm = MEMM("../")
 
     # Final evaluation (optional: fine-tune in the remaining range)
-    best_iter, memm.best_classifier = ternary_search_best_classifier(memm, left=20, right=60)
+    # best_iter, memm.best_classifier = ternary_search_best_classifier(memm, left=50, right=60)
 
-    # best_iter = 24
-    # memm.train(memm.extract_samples(), best_iter)
-    # memm.best_classifier = memm.classifier
+    best_iter = 58
+    memm.train(memm.extract_samples(), best_iter)
+    memm.best_classifier = memm.classifier
 
     memm.save_model(memm.best_classifier)
+    memm.test()
     print('Training finished and best model saved! best iteration is: ', best_iter, '\n')
 
 

@@ -91,18 +91,22 @@ class MEMM:
         current_word = words[position]
         current_word_lower = current_word.lower()
 
-        # Roughly features of current word
+        # Rough features of current word
         features['has_(%s)' % current_word] = 1
         features['cur_word_len'] = len(current_word) // 2
         if current_word_lower in self.nltk_stopwords: features['cur_word_is_stopword'] = 1
 
         # Gazetteer Checking
-        features['cur_word_in_first_name_gazetteer'] = (current_word_lower in self.first_name_gazetteer)
-        features['cur_word_in_last_name_gazetteer'] = (current_word_lower in self.last_name_gazetteer)
-        features['cur_word_in_cn_first_name_gazetteer'] = (current_word_lower in self.cn_first_name_gazetteer)
-        features['cur_word_in_cn_last_name_gazetteer'] = (current_word_lower in self.cn_last_name_gazetteer)
+        features['cur_word_in_first_name_gazetteer'] = \
+            (current_word_lower in self.first_name_gazetteer)
+        features['cur_word_in_last_name_gazetteer'] = \
+            (current_word_lower in self.last_name_gazetteer)
+        features['cur_word_in_cn_first_name_gazetteer'] = \
+            (current_word_lower in self.cn_first_name_gazetteer)
+        features['cur_word_in_cn_last_name_gazetteer'] = \
+            (current_word_lower in self.cn_last_name_gazetteer)
 
-        # Roughly features of previous word
+        # Rough features of previous word
         prev_word = words[position - 1] if position > 0 else "."
 
         features['prev_word_label'] = previous_label

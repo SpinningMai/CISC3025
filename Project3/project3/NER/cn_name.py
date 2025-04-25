@@ -44,4 +44,4 @@ with open(output_last_path, 'w', encoding='utf-8') as fo_last:
         if len(last_name) > 1:
             fo_last.write(f"{last_name}\n")
 
-print("Finish！")
+print("Finish!")
