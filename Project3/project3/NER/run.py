@@ -63,22 +63,46 @@ def ternary_search_best_classifier(memm, left, right) -> (int, MEMM):
 def main():
     memm = MEMM("../")
 
+    if arg.train:
+        memm.max_iter = BEST_ITER
+        memm.train(memm.extract_samples(), max_iter=memm.max_iter)
+        memm.save_model(memm.classifier)
+    if arg.dev:
+        try:
+            memm.load_model()
+            memm.beta = BETA
+            memm.test()
+        except Exception as e:
+            print(e)
+    if arg.show:
+        try:
+            memm.load_model()
+            memm.show_samples(BOUND)
+        except Exception as e:
+            print(e)
+
     # Final evaluation (optional: fine-tune in the remaining range)
     # best_iter, memm.best_classifier = ternary_search_best_classifier(memm, left=50, right=60)
 
-    best_iter = 58
-    memm.train(memm.extract_samples(), best_iter)
-    memm.best_classifier = memm.classifier
+    # best_iter = 58
+    # memm.train(memm.extract_samples(), best_iter)
+    # memm.best_classifier = memm.classifier
 
-    memm.save_model(memm.best_classifier)
-    memm.test()
-    print('Training finished and best model saved! best iteration is: ', best_iter, '\n')
+    # memm.save_model(memm.best_classifier)
+    # memm.test()
+    # print('Training finished and best model saved! best iteration is: ', best_iter, '\n')
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--train', nargs='?', const=True, default=False)
+    parser.add_argument('-d', '--dev', nargs='?', const=True, default=False)
+    parser.add_argument('-s', '--show', nargs='?', const=True, default=False)
+    arg = parser.parse_args()
     #====== Customization ======
     BETA = 0.5
-    MAX_ITER = 50
+    BEST_ITER = 58 # found by ternary search algorithm when training
+    BOUND = (0, 20)
     #==========================
 
     main()
